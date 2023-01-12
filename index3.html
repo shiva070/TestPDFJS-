@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.2.146/pdf.min.js"></script> 
+    <!-- <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.2.146/build/pdf.min.js"></script> -->
+    </head>
+    <style>
+        #pdf_canvas{
+           
+            align-items: center;
+            overflow: auto;
+            text-align: center;
+            border: 2px solid;
+        }
+
+        body{
+            background-color: #333;
+        }
+    </style>
+<body>   
+    <button id="prev">Prev</button>
+    <button id="next">Next</button>
+    <span id="npages">not yet</span>
+    <button id="zoomin">+</button>
+    <button id="zoomout">-</button>
+    <canvas id="pdf_canvas"></canvas>
+        
+    <script>
+        var pdfDoc = null,
+        pageNum = 1,
+        pageRendering = false,
+        PageNumPending = null,
+        scale = 1.5,
+        canvas = document.getElementById("pdf_canvas")
+        ctx = canvas.getContext('2d')
+        function renderPage(num){
+            pageRendering = true
+            pdfDoc.getPage(num).then((page)=>{
+                var viewport = page.getViewport({scale:scale});
+                canvas.height = viewport.height
+                canvas.width = viewport.width
+
+                var renderContext = {
+                    canvasContext:ctx,
+                    viewport: viewport
+                }
+
+                var renderTask = page.render(renderContext)
+                renderTask.promise.then(()=>{
+                    pageRendering = false;
+                    if(PageNumPending !=null){
+                        renderPage(PageNumPending)
+                        PageNumPending = null
+                    }
+                })
+            })
+            document.getElementById('npages').textContent = num;
+        }
+       
+        function queueRenderPage(num){
+            if(pageRendering){
+                PageNumPending = num
+            }else{
+                renderPage(num)
+            }
+        }
+        function onPrevPage(){
+            if(pageNum<=1){
+                return
+            }
+            pageNum--;
+            queueRenderPage(pageNum)
+        }
+        document.getElementById('prev').addEventListener('click',onPrevPage)
+      
+        function onNextPage(){
+            if(pageNum>=pdfDoc.numPages){
+                return;
+            }
+            pageNum++;
+            queueRenderPage(pageNum)
+        }
+        document.getElementById('next').addEventListener('click',onNextPage)
+
+        function ZoomOut(){
+            scale -=0.1
+            renderPage(pageNum);
+        }
+        document.getElementById('zoomout').addEventListener('click',ZoomOut)
+
+        function ZoomIn(){
+            scale +=0.1
+            renderPage(pageNum);
+        }
+        document.getElementById('zoomin').addEventListener('click',ZoomIn)
+
+        var url = 'https://www.appsloveworld.com/wp-content/uploads/2020/01/SamplePdf_1.73Mb_87_Page.pdf';
+        var loadingTask = pdfjsLib.getDocument(url)
+        pdfjsLib.getDocument(url).promise.then((doc)=>{
+            pdfDoc = doc
+           document.getElementById("npages").textContent = doc.numPages;
+            renderPage(pageNum)
+        })
+    </script>
+</body>
+</html>
